@@ -2,6 +2,8 @@
 set -eu
 
 PLUGIN_VERSION="${PEERTUBE_OIDC_PLUGIN_VERSION:-1.1.0}"
+XAPI_PLUGIN_VERSION="${PEERTUBE_OLT_XAPI_PLUGIN_VERSION:-0.1.0}"
+XAPI_PLUGIN_SOURCE="${PEERTUBE_OLT_XAPI_PLUGIN_SOURCE:-/bootstrap/plugins/peertube-plugin-olt-xapi}"
 PLUGIN_DIR="/data/plugins"
 
 if ! command -v psql >/dev/null 2>&1; then
@@ -16,6 +18,12 @@ if [ ! -f package.json ]; then
 fi
 
 npm install --omit=dev --no-audit --no-fund "peertube-plugin-auth-openid-connect@${PLUGIN_VERSION}"
+
+if [ -d "$XAPI_PLUGIN_SOURCE" ]; then
+  npm install --omit=dev --no-audit --no-fund "$XAPI_PLUGIN_SOURCE"
+else
+  echo "OLT xAPI plugin source not found at $XAPI_PLUGIN_SOURCE; skipping install." >&2
+fi
 
 SETTINGS_JSON="$(node <<'NODE'
 const settings = {
@@ -82,5 +90,57 @@ ON CONFLICT (name, type) DO UPDATE SET
   settings = EXCLUDED.settings,
   "updatedAt" = now();
 SQL
+
+if [ -d "$XAPI_PLUGIN_SOURCE" ]; then
+  XAPI_SETTINGS_JSON="$(node <<'NODE'
+const settings = {
+  "enabled": process.env.PEERTUBE_OLT_XAPI_ENABLED !== "false",
+  "internal-ingest-url": process.env.OLT_XAPI_INTERNAL_INGEST_URL || "",
+  "public-ingest-url": process.env.OLT_XAPI_PUBLIC_INGEST_URL || "",
+  "activity-prefix": process.env.OLT_XAPI_ACTIVITY_PREFIX || "http://peertube.localhost/xapi"
+};
+
+console.log(JSON.stringify(settings));
+NODE
+)"
+
+  psql "$PEERTUBE_DATABASE_URL" <<SQL
+INSERT INTO plugin (
+  name,
+  type,
+  version,
+  "latestVersion",
+  enabled,
+  uninstalled,
+  "peertubeEngine",
+  description,
+  homepage,
+  settings,
+  storage,
+  "createdAt",
+  "updatedAt"
+) VALUES (
+  'olt-xapi',
+  1,
+  '${XAPI_PLUGIN_VERSION}',
+  NULL,
+  TRUE,
+  FALSE,
+  '>=5.0.0',
+  'Local OLT xAPI demo instrumentation for PeerTube.',
+  'https://openlearningtools.local',
+  \$olt\$${XAPI_SETTINGS_JSON}\$olt\$::jsonb,
+  NULL,
+  now(),
+  now()
+)
+ON CONFLICT (name, type) DO UPDATE SET
+  version = EXCLUDED.version,
+  enabled = TRUE,
+  uninstalled = FALSE,
+  settings = EXCLUDED.settings,
+  "updatedAt" = now();
+SQL
+fi
 
 chown -R 999:999 "$PLUGIN_DIR"

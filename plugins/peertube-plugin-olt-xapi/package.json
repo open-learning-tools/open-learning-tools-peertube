@@ -1,0 +1,28 @@
+{
+  "name": "peertube-plugin-olt-xapi",
+  "version": "0.1.0",
+  "description": "Local OLT xAPI demo instrumentation for PeerTube.",
+  "engine": {
+    "peertube": ">=5.0.0"
+  },
+  "keywords": [
+    "peertube",
+    "plugin",
+    "xapi",
+    "olt"
+  ],
+  "homepage": "https://openlearningtools.local",
+  "author": "Open Learning Tools",
+  "bugs": "https://github.com/open-learning-tools/open-learning-tools-peertube/issues",
+  "library": "./main.js",
+  "staticDirs": {},
+  "css": [],
+  "clientScripts": [
+    {
+      "script": "client/video-watch-client-plugin.js",
+      "scopes": [
+        "video-watch"
+      ]
+    }
+  ]
+}
