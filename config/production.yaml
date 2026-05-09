@@ -1,0 +1,75 @@
+# Minimal OLT local-dev PeerTube configuration.
+# Mount this directory at /config in the PeerTube container.
+
+listen:
+  hostname: '0.0.0.0'
+  port: 9000
+
+webserver:
+  hostname: 'peertube.localhost'
+  port: 80
+  https: false
+
+trust_proxy:
+  - 'loopback'
+  - 'linklocal'
+  - 'uniquelocal'
+  - '172.16.0.0/12'
+
+secrets:
+  peertube: null
+
+database:
+  hostname: 'postgres'
+  port: 5432
+  ssl: false
+  name: 'olt_peertube'
+  suffix: ''
+  username: 'olt'
+  password: null
+
+redis:
+  hostname: 'redis'
+  port: 6379
+  auth: null
+
+smtp:
+  hostname: 'maildev'
+  port: 1025
+  username: null
+  password: null
+  tls: false
+  disable_starttls: true
+  from_address: 'noreply@olt.localhost'
+
+admin:
+  email: 'admin@olt.localhost'
+  contact_form:
+    enabled: false
+
+instance:
+  name: 'OLT Videos'
+  short_description: 'Local OLT video service for development.'
+  customizations:
+    javascript: |
+      (function () {
+        var path = window.location.pathname;
+        var params = new URLSearchParams(window.location.search);
+        var authPath = '/plugins/auth-openid-connect/1.1.0/auth/openid-connect';
+
+        if (window.localStorage.getItem('access_token')) return;
+        if (params.has('externalAuthToken') || params.has('externalAuthError')) return;
+        if (path.indexOf('/plugins/') === 0) return;
+        if (window.sessionStorage.getItem('olt-peertube-autologin') === '1') return;
+
+        window.sessionStorage.setItem('olt-peertube-autologin', '1');
+        window.location.assign(authPath);
+      }());
+
+signup:
+  enabled: false
+
+client:
+  menu:
+    login:
+      redirect_on_single_external_auth: true
