@@ -201,3 +201,7 @@ function verbFor(key) {
 function trimTrailingSlash(value) {
   return String(value || "").replace(/\/+$/, "");
 }
+
+export {
+  register
+};
